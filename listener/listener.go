@@ -2,17 +2,17 @@ package listener
 
 import (
 	"fmt"
-	"log"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	gopacket "github.com/google/gopacket"
 	pcap "github.com/google/gopacket/pcap"
 )
 
-func parseInput(input string) ([]int, error) {
+func ParseInput(input string) ([]int, error) {
 	var ports []int
 	if input == "" {
 		ports = append(ports, 80) // Default port
@@ -28,7 +28,7 @@ func parseInput(input string) ([]int, error) {
 	return ports, nil
 }
 
-func handlePacket(packet gopacket.Packet) {
+func handlePacket(packet gopacket.Packet, log chan string) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 
 	// Extract network and transport layer details
@@ -42,54 +42,61 @@ func handlePacket(packet gopacket.Packet) {
 		// Optionally, print the application payload
 		if appLayer := packet.ApplicationLayer(); appLayer != nil && len(appLayer.Payload()) > 0 {
 			payload := string(appLayer.Payload())
-			log.Printf("%s: %s -> %s\n", now, src, dst)
+			log <- fmt.Sprintf("%s: %s -> %s", now, src, dst)
 
 			httpMethod := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE"}
 			if slices.Contains(httpMethod, strings.Split(payload, " ")[0]) {
 				method := strings.Split(payload, " ")[0]
-				log.Printf("METHOD: [%s] -> Payload: [%s]\n\n", method, payload)
+				log <- fmt.Sprintf("METHOD: [%s] -> Payload: [%s]\n\n", method, strings.TrimSpace(payload))
 			} else {
-				log.Printf("Payload: [%q]\n\n", payload)
+				log <- fmt.Sprintf("Payload: [%q]\n\n", payload)
 			}
 
 		}
 	}
 }
 
-func ListenPortRange(portInput string) {
+func ListenPortRange(selectedDevice string, portInput string, log chan string) tea.Cmd {
 	var ports []int
 
-	ports, err := parseInput(portInput)
+	ports, err := ParseInput(portInput)
 	if err != nil {
-		panic(err)
+		log <- fmt.Sprintf("Error parsing input: %v", err)
 	}
-
+	log <- fmt.Sprintf("Listening on ports: %v", ports)
 	for _, port := range ports {
 		go func(p int) {
-			if err := ListenPort(p); err != nil { // Start a goroutine for each port
-				log.Printf("Error listening on port %d: %v", p, err)
-			}
+			log <- fmt.Sprintf("Listening on port %d\n", port)
+			ListenPort(selectedDevice, p, log) // Start a goroutine for each port
 		}(port)
 	}
+
+	return nil
+
 }
 
-func ListenPort(port int) error {
-	devices, err := pcap.FindAllDevs()
-	if devices == nil || err != nil {
-		return fmt.Errorf("no devices found")
-	}
-	filter := fmt.Sprintf("port %d", port)
-	if handle, err := pcap.OpenLive("lo0", 1600, true, pcap.BlockForever); err != nil {
-		return err
-	} else if err := handle.SetBPFFilter(filter); err != nil {
-		return err
+func AllDevices() ([]string, error) {
+	devices := []string{}
+	if allDevices, err := pcap.FindAllDevs(); err != nil {
+		return nil, err
 	} else {
-		fmt.Printf("Listening on port %d...\n", port)
+		for _, device := range allDevices {
+			devices = append(devices, device.Name)
+		}
+	}
+	return devices, nil
+}
+
+func ListenPort(selectedDevice string, port int, log chan string) {
+	filter := fmt.Sprintf("port %d", port)
+	if handle, err := pcap.OpenLive(selectedDevice, 1600, true, pcap.BlockForever); err != nil {
+		log <- err.Error()
+	} else if err := handle.SetBPFFilter(filter); err != nil {
+		log <- err.Error()
+	} else {
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for packet := range packetSource.Packets() {
-			handlePacket(packet)
+			handlePacket(packet, log)
 		}
-
-		return nil
 	}
 }

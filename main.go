@@ -1,15 +1,16 @@
 package main
 
 import (
-	"os"
+	"log"
 
-	listener "github.com/daptheHuman/multiport-listener/listener"
+	tea "github.com/charmbracelet/bubbletea"
+	cli "github.com/daptheHuman/multiport-listener/cli"
 )
 
 func main() {
-	portInput := os.Args[1]
-	listener.ListenPortRange(portInput)
-
-	// Prevent the program from exiting
+	p := tea.NewProgram(cli.InitalModel())
+	if _, err := p.Run(); err != nil {
+		log.Fatal(err)
+	}
 	select {}
 }

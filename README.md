@@ -16,6 +16,8 @@ This tool can be helpful for:
 
 ```
 .
+├── cli                # CLI-related code
+├── go.mod             # Go module dependencies
 ├── go.sum             # Go module checksums
 ├── listener           # Contains listener logic
 │   └── listener.go    # Main code for packet listening and parsing
