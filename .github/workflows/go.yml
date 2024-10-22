@@ -1,0 +1,40 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+    name: Build Go Binary
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.20'
+
+    - name: Display the release tag
+      run: echo ${{ github.event.release.tag_name }}
+      
+    - name: Build Go Binaries
+      run: ./go-executable-build.sh ${{ github.event.release.tag_name }}
+
+    - name: List the executables
+      run: ls -l ./release
+
+    - name: Upload to release
+      uses: svenstaro/upload-release-action@2.9.0
+      with:
+        repo_token: ${{ github.token }}
+        tag: ${{ github.ref }}
+        file: ./release/multiport-listener-*
+        file_glob: true
