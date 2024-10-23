@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 tag_name=$1
-platforms=("windows/amd64" "linux/amd64" "darwin/arm64")
+platforms=("windows/amd64" "linux/amd64")
 current_arch=$(uname -m)
 
 echo "Current architecture is $current_arch"
@@ -25,6 +25,6 @@ do
         output_name+='.exe'
     fi
     echo "Building to release/$output_name..."
-    env CGO_ENABLED=1 GOOS=$GOOS GOARCH=$GOARCH go build -o release/$output_name
+        env CGO_ENABLED=1 GOOS=$GOOS GOARCH=$GOARCH go build -o release/$output_name
     done
 
