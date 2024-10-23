@@ -25,6 +25,6 @@ do
         output_name+='.exe'
     fi
     echo "Building to release/$output_name..."
-    env GOOS=$GOOS GOARCH=$GOARCH go build -o release/$output_name
+    env CGO_ENABLED=1 GOOS=$GOOS GOARCH=$GOARCH go build -o release/$output_name
     done
 
